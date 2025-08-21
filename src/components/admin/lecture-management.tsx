@@ -418,7 +418,7 @@ export function LectureManagement({ sectionId }: LectureManagementProps) {
 
       {lectures.length === 0 ? (
         <div className="text-center text-gray-500 py-8">
-          No lectures created yet. Click "Add Lecture" to get started.
+          No lectures created yet. Click &apos;Add Lecture&apos; to get started.
         </div>
       ) : (
         <div className="space-y-3">

@@ -149,8 +149,9 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
 
           <div className="p-3 bg-blue-50 rounded-lg">
             <p className="text-sm text-blue-800">
-              <strong>Note:</strong> Ensure you're using the correct keys for
-              your environment. Test keys should only be used in development.
+              <strong>Note:</strong> Ensure you&apos;re using the correct keys
+              for your environment. Test keys should only be used in
+              development.
             </p>
           </div>
         </CardContent>

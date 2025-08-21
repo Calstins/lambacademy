@@ -811,8 +811,8 @@ export function CoursePlayer({
               <div className="flex items-start space-x-2 text-sm text-amber-700 bg-amber-50 p-3 rounded-lg">
                 <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <p>
-                  This is a one-time purchase. Once completed, you'll have
-                  permanent access to this section's content.
+                  This is a one-time purchase. Once completed, you&apos;ll have
+                  permanent access to this section&apos;s content.
                 </p>
               </div>
             </div>

@@ -31,7 +31,6 @@ export function LoginForm() {
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
-
     try {
       const result = await signIn.email({
         email: data.email,
@@ -40,21 +39,13 @@ export function LoginForm() {
 
       if (result.data) {
         toast.success('Login successful!');
-
-        // Type assertion to include 'role' property
-        const user = result.data.user as typeof result.data.user & {
-          role?: string;
-        };
-        const userRole = user.role;
-        if (userRole === 'ADMIN') {
-          router.push('/admin');
-        } else {
-          router.push('/dashboard');
-        }
-      } else {
-        toast.error('Invalid email or password');
+        // Let the server decide the correct destination based on the live session
+        router.replace('/redirect');
+        return;
       }
-    } catch (error) {
+
+      toast.error('Invalid email or password');
+    } catch {
       toast.error('An error occurred. Please try again.');
     } finally {
       setIsLoading(false);

@@ -22,8 +22,8 @@ export default async function AdminDashboard() {
             Dashboard Overview
           </h1>
           <p className="text-gray-600 mt-2">
-            Welcome to your LMS admin dashboard. Here's what's happening in your
-            system.
+            Welcome to your LMS admin dashboard. Here&apos;s what&apos;s
+            happening in your system.
           </p>
         </div>
 

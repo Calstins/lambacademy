@@ -282,7 +282,8 @@ export function SectionManagement({ courseId }: SectionManagementProps) {
       {sections.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-gray-500">
-            No sections created yet. Click "Add Section" to get started.
+            No sections created yet. Click &apos;Add Section&apos; to get
+            started.
           </CardContent>
         </Card>
       ) : (

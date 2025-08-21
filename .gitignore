@@ -13,6 +13,9 @@
 # testing
 /coverage
 
+# ignore the seed.ts file
+/scripts/seed.ts
+
 # next.js
 /.next/
 /out/
