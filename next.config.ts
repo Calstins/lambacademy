@@ -1,7 +1,11 @@
-import type { NextConfig } from "next";
+// next.config.ts
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  images: {
+    domains: ['utfs.io', 'res.cloudinary.com', 'cloudinary.com'],
+  },
+  serverExternalPackages: ['@prisma/client'],
 };
 
 export default nextConfig;

@@ -1,0 +1,306 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  // output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String    @id @default(cuid()) @map("_id")
+  firstName   String
+  lastName    String
+  email       String    @unique
+  phone       String
+  dateOfBirth DateTime?
+  gender      Gender
+  department  String?
+  course      String?
+  address     String?
+  state       String?
+  country     String?
+  role        Role      @default(STUDENT)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  enrollments  Enrollment[]
+  submissions  Submission[]
+  quizAttempts QuizAttempt[]
+  certificates Certificate[]
+
+  name          String
+  emailVerified Boolean   @default(false)
+  image         String?
+  sessions      Session[]
+  accounts      Account[]
+
+  @@map("users")
+}
+
+model Course {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  title              String
+  description        String
+  learningObjectives String[]
+  curriculum         String
+  isPaid             Boolean  @default(false)
+  price              Float?
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Certificate Settings
+  certificateEnabled           Boolean @default(true)
+  certificateRequireCompletion Boolean @default(true)
+  certificateRequireMinScore   Boolean @default(false)
+  certificateMinScore          Float?  @default(70)
+
+  // Relations
+  sections     Section[]
+  enrollments  Enrollment[]
+  certificates Certificate[]
+
+  @@map("courses")
+}
+
+model Section {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  order     Int
+  isPaid    Boolean  @default(false)
+  price     Float?
+  courseId  String   @db.ObjectId
+  isLocked  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  course   Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lectures Lecture[]
+
+  @@map("sections")
+}
+
+model Lecture {
+  id        String      @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  order     Int
+  type      LectureType
+  content   Json // Store different content based on type
+  sectionId String      @db.ObjectId
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  // Relations
+  section     Section      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+
+  @@map("lectures")
+}
+
+model Enrollment {
+  id               String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String
+  courseId         String        @db.ObjectId
+  enrolledAt       DateTime      @default(now())
+  completedAt      DateTime?
+  progressPercent  Float         @default(0)
+  paymentStatus    PaymentStatus @default(PENDING)
+  paymentReference String?
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  // Track paid sections
+  paidSections     String[] @db.ObjectId
+  totalScore       Float    @default(0)
+  maxPossibleScore Float    @default(0)
+
+  @@unique([userId, courseId])
+  @@map("enrollments")
+}
+
+model Quiz {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  questions Question[] @relation("QuizQuestions")
+  lectureId String     @db.ObjectId
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // Relations
+  attempts QuizAttempt[]
+
+  @@map("quizzes")
+}
+
+model Question {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  question String
+  options  String[]
+  correct  Int // Index of correct answer
+  quizId   String   @db.ObjectId
+  order    Int
+
+  // Relations
+  quiz Quiz @relation(fields: [quizId], references: [id], name: "QuizQuestions")
+
+  @@map("questions")
+}
+
+model QuizAttempt {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String
+  quizId    String   @db.ObjectId
+  answers   Int[] // Array of selected answer indices
+  score     Float
+  maxScore  Float
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@map("quiz_attempts")
+}
+
+model Assignment {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String
+  dueDate     DateTime?
+  lectureId   String    @db.ObjectId
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  submissions Submission[]
+
+  @@map("assignments")
+}
+
+model Submission {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String
+  assignmentId String    @db.ObjectId
+  lectureId    String    @db.ObjectId
+  content      String
+  attachments  String[]
+  grade        Float?
+  feedback     String?
+  submittedAt  DateTime  @default(now())
+  gradedAt     DateTime?
+
+  // Relations
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  lecture    Lecture    @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+
+  @@map("submissions")
+}
+
+model Certificate {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId   String
+  courseId String   @db.ObjectId
+  issuedAt DateTime @default(now())
+  imageUrl String
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@map("certificates")
+}
+
+enum Role {
+  ADMIN
+  STUDENT
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum LectureType {
+  VIDEO
+  TEXT
+  QUIZ
+  PRACTICE_TEST
+  ASSIGNMENT
+  PDF
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+// Wj8OjjqE2wsjsuJDDFn
+
+model Session {
+  id        String   @id @default(cuid()) @map("_id")
+  expiresAt DateTime
+  token     String
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @map("_id")
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id @default(cuid()) @map("_id")
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
+}
+
+model SystemSetting {
+  id        String   @id @default(cuid()) @map("_id")
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
