@@ -4,18 +4,13 @@ import { EditCourseForm } from '@/components/admin/edit-course-form';
 import { getCourse } from '@/lib/actions/admin';
 import { redirect } from 'next/navigation';
 
-interface EditCoursePageProps {
-  params: {
-    courseId: string;
-  };
-}
+type Props = {
+  params: { courseId: string };
+};
 
-export default async function EditCoursePage({ params }: EditCoursePageProps) {
+export default async function EditCoursePage({ params }: Props) {
   const course = await getCourse(params.courseId);
-
-  if (!course) {
-    redirect('/admin/courses');
-  }
+  if (!course) redirect('/admin/courses');
 
   return (
     <AdminLayout>

@@ -329,90 +329,90 @@ export function LectureManagement({ sectionId }: LectureManagementProps) {
               Add Lecture
             </Button>
           </DialogTrigger>
-          <DialogPortal>
-            <DialogOverlay className="fixed inset-0 z-[60] bg-black/50" />
-            <DialogContent className="fixed left-1/2 top-1/2 z-[61] -translate-x-1/2 -translate-y-1/2 w-full sm:max-w-2xl max-h-[85vh] overflow-y-auto rounded-lg bg-background p-6 shadow-lg">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingLecture ? 'Edit Lecture' : 'Create New Lecture'}
-                </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Lecture Title *</Label>
-                  <Input
-                    id="title"
-                    placeholder="Enter lecture title"
-                    {...register('title', {
-                      required: 'Lecture title is required',
+          <DialogContent className="h-[600px] max-w-3xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editingLecture ? 'Edit Lecture' : 'Create New Lecture'}
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="title">Lecture Title *</Label>
+                <Input
+                  id="title"
+                  placeholder="Enter lecture title"
+                  {...register('title', {
+                    required: 'Lecture title is required',
+                  })}
+                />
+                {errors.title && (
+                  <p className="text-red-500 text-sm">{errors.title.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Lecture Type *</Label>
+                <Select
+                  value={watchType || selectedType}
+                  onValueChange={(value) => {
+                    setSelectedType(value);
+                    setValue('type', value as any);
+                    // Reset content when type changes
+                    setValue('content', {});
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select lecture type" />
+                  </SelectTrigger>
+                  <SelectContent
+                    className="z-[70]"
+                    position="popper"
+                    side="bottom"
+                    align="start"
+                  >
+                    {lectureTypes.map((type) => {
+                      const Icon = type.icon;
+                      return (
+                        <SelectItem key={type.value} value={type.value}>
+                          <div className="flex items-center">
+                            <Icon className="w-4 h-4 mr-2" />
+                            {type.label}
+                          </div>
+                        </SelectItem>
+                      );
                     })}
-                  />
-                  {errors.title && (
-                    <p className="text-red-500 text-sm">
-                      {errors.title.message}
-                    </p>
-                  )}
-                </div>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                <div className="space-y-2">
-                  <Label>Lecture Type *</Label>
-                  <Select
-                    value={watchType || selectedType}
-                    onValueChange={(value) => {
-                      setSelectedType(value);
-                      setValue('type', value as any);
-                      // Reset content when type changes
-                      setValue('content', {});
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select lecture type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {lectureTypes.map((type) => {
-                        const Icon = type.icon;
-                        return (
-                          <SelectItem key={type.value} value={type.value}>
-                            <div className="flex items-center">
-                              <Icon className="w-4 h-4 mr-2" />
-                              {type.label}
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="border rounded-lg p-4">
+                <h3 className="font-medium mb-4">Content Configuration</h3>
+                {renderContentForm()}
+              </div>
 
-                <div className="border rounded-lg p-4">
-                  <h3 className="font-medium mb-4">Content Configuration</h3>
-                  {renderContentForm()}
-                </div>
-
-                <div className="flex justify-end space-x-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={isPending}
-                    className="bg-primary hover:bg-primary-800"
-                  >
-                    {isPending
-                      ? 'Saving...'
-                      : editingLecture
-                      ? 'Update'
-                      : 'Create'}{' '}
-                    Lecture
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </DialogPortal>
+              <div className="flex justify-end space-x-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isPending}
+                  className="bg-primary hover:bg-primary-800"
+                >
+                  {isPending
+                    ? 'Saving...'
+                    : editingLecture
+                    ? 'Update'
+                    : 'Create'}{' '}
+                  Lecture
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
         </Dialog>
       </div>
 
@@ -510,7 +510,7 @@ export function LectureManagement({ sectionId }: LectureManagementProps) {
         open={quizDialog.open}
         onOpenChange={(o) => setQuizDialog((s) => ({ ...s, open: o }))}
       >
-        <DialogContent className="max-w-3xl">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>
               {quizDialog.type === 'PRACTICE_TEST' ? 'Practice Test' : 'Quiz'}{' '}
