@@ -12,17 +12,18 @@ import { redirect } from 'next/navigation';
 import { SectionSelector } from '@/components/admin/section-selector';
 
 interface CourseDetailPageProps {
-  params: {
+  params: Promise<{
     courseId: string;
-  };
+  }>;
 }
 
 export default async function CourseDetailPage({
   params,
 }: CourseDetailPageProps) {
+  const { courseId } = await params;
   const [course, sections] = await Promise.all([
-    getCourse(params.courseId),
-    getSections(params.courseId),
+    getCourse(courseId),
+    getSections(courseId),
   ]);
 
   if (!course) {
@@ -62,7 +63,7 @@ export default async function CourseDetailPage({
             </div>
           </div>
 
-          <Link href={`/admin/courses/${params.courseId}/edit`}>
+          <Link href={`/admin/courses/${courseId}/edit`}>
             <Button className="bg-primary hover:bg-primary-800">
               <Edit className="w-4 h-4 mr-2" />
               Edit Course
@@ -102,7 +103,7 @@ export default async function CourseDetailPage({
         </div>
 
         {/* Section Management */}
-        <SectionManagement courseId={params.courseId} />
+        <SectionManagement courseId={courseId} />
 
         {/* Lecture Management */}
         {sections.length > 0 && (
@@ -116,7 +117,7 @@ export default async function CourseDetailPage({
                   ...section,
                   price: section.price === null ? undefined : section.price,
                 }))}
-                courseId={params.courseId}
+                courseId={courseId}
               />
             </CardContent>
           </Card>

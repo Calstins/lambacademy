@@ -1,9 +1,15 @@
 import QuizBuilder from '@/components/admin/quiz-builder';
 
-export default function Page({ params }: { params: { lectureId: string } }) {
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ lectureId: string }>;
+}) {
+  const { lectureId } = await params;
+
   return (
     <div className="p-6">
-      <QuizBuilder lectureId={params.lectureId} lectureType="QUIZ" />
+      <QuizBuilder lectureId={lectureId} lectureType="QUIZ" />
     </div>
   );
 }

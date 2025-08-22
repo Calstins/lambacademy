@@ -4,18 +4,17 @@ import { getStudentCourseDetails } from '@/lib/actions/student';
 import { redirect } from 'next/navigation';
 
 interface CourseDetailPageProps {
-  params: {
+  params: Promise<{
     courseId: string;
-  };
+  }>;
 }
 
 export default async function StudentCourseDetailPage({
   params,
 }: CourseDetailPageProps) {
   try {
-    const { course, enrollment } = await getStudentCourseDetails(
-      params.courseId
-    );
+    const { courseId } = await params;
+    const { course, enrollment } = await getStudentCourseDetails(courseId);
 
     // Ensure all section.price are undefined instead of null
     const fixedCourse = {
@@ -39,7 +38,7 @@ export default async function StudentCourseDetailPage({
         <CoursePlayer
           course={fixedCourse}
           enrollment={fixedEnrollment}
-          courseId={params.courseId}
+          courseId={courseId}
         />
       </StudentLayout>
     );
