@@ -5,11 +5,12 @@ import { getCourse } from '@/lib/actions/admin';
 import { redirect } from 'next/navigation';
 
 type Props = {
-  params: { courseId: string };
+  params: Promise<{ courseId: string }>;
 };
 
 export default async function EditCoursePage({ params }: Props) {
-  const course = await getCourse(params.courseId);
+  const { courseId } = await params;
+  const course = await getCourse(courseId);
   if (!course) redirect('/admin/courses');
 
   return (
@@ -23,7 +24,7 @@ export default async function EditCoursePage({ params }: Props) {
         </div>
         <EditCourseForm
           course={{ ...course, price: course.price ?? undefined }}
-          courseId={params.courseId}
+          courseId={courseId}
         />
       </div>
     </AdminLayout>
