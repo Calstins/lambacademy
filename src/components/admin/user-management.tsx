@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -50,6 +50,9 @@ interface User {
   phone: string;
   role: 'ADMIN' | 'STUDENT';
   gender: 'MALE' | 'FEMALE';
+  name?: string;
+  firstName?: string;
+  lastName?: string;
   department?: string;
   course?: string;
   country?: string;
@@ -58,20 +61,24 @@ interface User {
     enrollments: number;
   };
   enrollments?: {
-    course: {
-      title: string;
-    };
+    course: { title: string };
     progressPercent: number;
     completedAt?: string;
   }[];
 }
 
 interface UserFormData {
+  // Better Auth compatible fields
+  name: string; // Full name (Surname first)
+  firstName?: string;
+  lastName?: string;
+
   email: string;
   phone: string;
-  password: string;
+  password: string; // required on create; optional on edit
   role: 'ADMIN' | 'STUDENT';
   gender: 'MALE' | 'FEMALE';
+
   department?: string;
   course?: string;
   country?: string;
@@ -95,21 +102,16 @@ export function UserManagement() {
     reset,
     setValue,
     watch,
-    formState: { errors },
+    formState: { errors, touchedFields },
   } = useForm<UserFormData>();
 
-  // Watch form values for controlled components
   const watchedRole = watch('role');
   const watchedGender = watch('gender');
+  const nameValue = watch('name');
+  const firstNameValue = watch('firstName');
+  const lastNameValue = watch('lastName');
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  useEffect(() => {
-    filterUsers();
-  }, [users, roleFilter, searchTerm]);
-
+  // ---------- Normalizers (avoid null/undefined type issues) ----------
   function toUser(u: any): User {
     return {
       id: u.id,
@@ -117,6 +119,9 @@ export function UserManagement() {
       phone: u.phone ?? '',
       role: u.role === 'ADMIN' ? 'ADMIN' : 'STUDENT',
       gender: u.gender === 'FEMALE' ? 'FEMALE' : 'MALE',
+      name: u.name ?? undefined,
+      firstName: u.firstName ?? undefined,
+      lastName: u.lastName ?? undefined,
       department: u.department ?? undefined,
       course: u.course ?? undefined,
       country: u.country ?? undefined,
@@ -148,9 +153,43 @@ export function UserManagement() {
     };
   }
 
+  useEffect(() => {
+    const raw = (nameValue || '').trim();
+    if (!raw) return;
+
+    const parts = raw.split(/\s+/);
+    if (parts.length < 2) return;
+
+    const newLast = parts[0]; // Surname first
+    const newFirst = parts.slice(1).join(' '); // Other names
+
+    // Only fill if empty or not manually touched yet
+    if (
+      (!firstNameValue || firstNameValue.trim() === '') &&
+      !touchedFields.firstName
+    ) {
+      setValue('firstName', newFirst, { shouldDirty: true });
+    }
+    if (
+      (!lastNameValue || lastNameValue.trim() === '') &&
+      !touchedFields.lastName
+    ) {
+      setValue('lastName', newLast, { shouldDirty: true });
+    }
+  }, [nameValue, firstNameValue, lastNameValue, touchedFields, setValue]);
+
+  // ---------- Data ----------
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    filterUsers();
+  }, [users, roleFilter, searchTerm]);
+
   const fetchUsers = async () => {
     try {
-      const data = await getUsers(); // whatever the server returns
+      const data = await getUsers();
       const normalized: User[] = (data as any[]).map(toUser);
       setUsers(normalized);
     } catch {
@@ -171,6 +210,7 @@ export function UserManagement() {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
         (user) =>
+          (user.name ?? '').toLowerCase().includes(term) ||
           (user.email ?? '').toLowerCase().includes(term) ||
           (user.phone ?? '').includes(searchTerm) ||
           (user.department ?? '').toLowerCase().includes(term)
@@ -180,14 +220,26 @@ export function UserManagement() {
     setFilteredUsers(filtered);
   };
 
+  // ---------- Create / Update ----------
   const onSubmit = async (data: UserFormData) => {
     startTransition(async () => {
       const formData = new FormData();
+
+      // Better Auth core fields
+      formData.append('name', data.name);
+      if (data.firstName) formData.append('firstName', data.firstName);
+      if (data.lastName) formData.append('lastName', data.lastName);
+
       formData.append('email', data.email);
       formData.append('phone', data.phone);
-      formData.append('password', data.password);
       formData.append('role', data.role);
       formData.append('gender', data.gender);
+
+      // Only send password when creating OR if user typed a new one on edit
+      if (!editingUser || (data.password && data.password.trim().length > 0)) {
+        formData.append('password', data.password);
+      }
+
       if (data.department) formData.append('department', data.department);
       if (data.course) formData.append('course', data.course);
       if (data.country) formData.append('country', data.country);
@@ -234,9 +286,31 @@ export function UserManagement() {
       toast.error('Failed to fetch user details');
     }
   };
+
+  // When editing, prefill all Better Auth name fields.
   const openEditDialog = (user: User) => {
+    // Try to derive first/last if they’re missing
+    const inferredFirst = user.firstName;
+    const inferredLast = user.lastName;
+    let name = user.name || '';
+    let firstName = inferredFirst || '';
+    let lastName = inferredLast || '';
+
+    if (!user.name && (user.firstName || user.lastName)) {
+      name = [user.lastName, user.firstName].filter(Boolean).join(' ');
+    }
+    if (!firstName || !lastName) {
+      const parts = (user.name ?? '').trim().split(/\s+/);
+      // Registration requires “Surname first”; try to infer conservatively
+      if (!lastName && parts.length) lastName = parts[0];
+      if (!firstName && parts.length > 1) firstName = parts.slice(1).join(' ');
+    }
+
     setEditingUser(user);
     reset({
+      name,
+      firstName,
+      lastName,
       email: user.email,
       phone: user.phone,
       role: user.role,
@@ -244,7 +318,7 @@ export function UserManagement() {
       department: user.department || '',
       course: user.course || '',
       country: user.country || '',
-      password: '', // Don't pre-fill password
+      password: '', // don’t prefill
     });
     setDialogOpen(true);
   };
@@ -252,6 +326,9 @@ export function UserManagement() {
   const openCreateDialog = () => {
     setEditingUser(null);
     reset({
+      name: '',
+      firstName: '',
+      lastName: '',
       email: '',
       phone: '',
       password: '',
@@ -268,6 +345,17 @@ export function UserManagement() {
     return <div className="flex justify-center p-8">Loading users...</div>;
   }
 
+  // Helper for avatar initials
+  const initials = (u: User) => {
+    const n = (u.name ?? '').trim();
+    if (n) {
+      const parts = n.split(/\s+/);
+      const i = (parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '');
+      return i.toUpperCase() || (u.email?.[0]?.toUpperCase() ?? 'U');
+    }
+    return u.email?.[0]?.toUpperCase() ?? 'U';
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -283,26 +371,77 @@ export function UserManagement() {
               Add User
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md overflow-y-auto max-h-[90vh]">
             <DialogHeader>
               <DialogTitle>
                 {editingUser ? 'Edit User' : 'Create New User'}
               </DialogTitle>
             </DialogHeader>
+
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              {/* Full Name (Surname first) */}
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name (Surname first) *</Label>
+                <Input
+                  id="name"
+                  placeholder='e.g. "Okafor Caleb"'
+                  {...register('name', {
+                    required: 'Full name is required',
+                    validate: (value) => {
+                      const parts = (value || '').trim().split(/\s+/);
+                      return (
+                        parts.length >= 2 ||
+                        'Enter surname, then at least one other name'
+                      );
+                    },
+                  })}
+                />
+                {errors.name && (
+                  <p className="text-red-500 text-sm">{errors.name.message}</p>
+                )}
+              </div>
+
+              {/* First / Last Name */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input
+                    id="firstName"
+                    placeholder="Caleb"
+                    {...register('firstName')}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name (Surname)</Label>
+                  <Input
+                    id="lastName"
+                    placeholder="Okafor"
+                    {...register('lastName')}
+                  />
+                </div>
+              </div>
+
+              {/* Email */}
               <div className="space-y-2">
                 <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
                   type="email"
                   placeholder="Enter email"
-                  {...register('email', { required: 'Email is required' })}
+                  {...register('email', {
+                    required: 'Email is required',
+                    pattern: {
+                      value: /^\S+@\S+$/i,
+                      message: 'Please enter a valid email address',
+                    },
+                  })}
                 />
                 {errors.email && (
                   <p className="text-red-500 text-sm">{errors.email.message}</p>
                 )}
               </div>
 
+              {/* Phone */}
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone *</Label>
                 <Input
@@ -315,6 +454,7 @@ export function UserManagement() {
                 )}
               </div>
 
+              {/* Password */}
               <div className="space-y-2">
                 <Label htmlFor="password">
                   Password {editingUser ? '(leave blank to keep current)' : '*'}
@@ -325,6 +465,9 @@ export function UserManagement() {
                   placeholder="Enter password"
                   {...register('password', {
                     required: !editingUser ? 'Password is required' : false,
+                    minLength: editingUser
+                      ? undefined
+                      : { value: 6, message: 'Min 6 characters' },
                   })}
                 />
                 {errors.password && (
@@ -334,6 +477,7 @@ export function UserManagement() {
                 )}
               </div>
 
+              {/* Role */}
               <div className="space-y-2">
                 <Label>Role *</Label>
                 <Select
@@ -355,6 +499,7 @@ export function UserManagement() {
                 )}
               </div>
 
+              {/* Gender */}
               <div className="space-y-2">
                 <Label>Gender *</Label>
                 <Select
@@ -376,6 +521,7 @@ export function UserManagement() {
                 )}
               </div>
 
+              {/* Department / Course / Country */}
               <div className="space-y-2">
                 <Label htmlFor="department">Department</Label>
                 <Input
@@ -431,9 +577,9 @@ export function UserManagement() {
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
-                  placeholder="Search by email, phone, or department..."
+                  placeholder="Search by name, email, phone, or department..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -473,12 +619,18 @@ export function UserManagement() {
                   <div className="flex items-center space-x-4">
                     <Avatar className="h-10 w-10">
                       <AvatarFallback className="bg-primary text-white">
-                        {user.email.charAt(0).toUpperCase()}
+                        {initials(user)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
                       <div className="flex items-center space-x-2">
-                        <h3 className="font-semibold">{user.email}</h3>
+                        <h3 className="font-semibold">
+                          {user.name ||
+                            `${user.firstName ?? ''} ${
+                              user.lastName ?? ''
+                            }`.trim() ||
+                            user.email}
+                        </h3>
                         <Badge
                           variant={
                             user.role === 'ADMIN' ? 'default' : 'secondary'
@@ -493,6 +645,7 @@ export function UserManagement() {
                         </Badge>
                       </div>
                       <div className="text-sm text-gray-600 space-y-1">
+                        <p>Email: {user.email}</p>
                         <p>Phone: {user.phone}</p>
                         {user.department && (
                           <p>Department: {user.department}</p>
@@ -550,11 +703,17 @@ export function UserManagement() {
               <div className="flex items-center space-x-4">
                 <Avatar className="h-16 w-16">
                   <AvatarFallback className="bg-primary text-white text-xl">
-                    {viewingUser.email.charAt(0).toUpperCase()}
+                    {initials(viewingUser)}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="text-xl font-semibold">{viewingUser.email}</h3>
+                  <h3 className="text-xl font-semibold">
+                    {viewingUser.name ||
+                      `${viewingUser.firstName ?? ''} ${
+                        viewingUser.lastName ?? ''
+                      }`.trim() ||
+                      viewingUser.email}
+                  </h3>
                   <Badge
                     variant={
                       viewingUser.role === 'ADMIN' ? 'default' : 'secondary'
@@ -590,6 +749,22 @@ export function UserManagement() {
                   </Label>
                   <p>{viewingUser.country || 'Not specified'}</p>
                 </div>
+                {(viewingUser.firstName || viewingUser.lastName) && (
+                  <>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-500">
+                        First Name
+                      </Label>
+                      <p>{viewingUser.firstName || '-'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-500">
+                        Last Name
+                      </Label>
+                      <p>{viewingUser.lastName || '-'}</p>
+                    </div>
+                  </>
+                )}
                 {viewingUser.department && (
                   <div>
                     <Label className="text-sm font-medium text-gray-500">
