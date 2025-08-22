@@ -8,8 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { UploadDropzone } from '@/lib/uploadthing';
-import type { UploadRouter } from '@/lib/uploadthing';
+import PdfUploader from '@/components/ui/pdf-uploader';
 import {
   Select,
   SelectContent,
@@ -270,19 +269,12 @@ export function LectureManagement({ sectionId }: LectureManagementProps) {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>PDF Document *</Label>
-              <UploadDropzone<UploadRouter, 'pdfUploader'>
-                endpoint="pdfUploader"
-                onClientUploadComplete={(files) => {
-                  const f = files?.[0];
-                  if (!f) return;
-                  setValue('content.pdfUrl', f.url, { shouldDirty: true });
-                  setValue('content.fileName', f.name ?? 'document.pdf', {
-                    shouldDirty: true,
-                  });
-                  toast.success('PDF uploaded successfully!');
-                }}
-                onUploadError={(error) => {
-                  toast.error(error.message ?? 'Upload failed');
+              <PdfUploader
+                value={watch('content.pdfUrl')}
+                onChange={(url) => {
+                  setValue('content.pdfUrl', url, { shouldDirty: true });
+                  // Optional: set a filename if you store it
+                  // setValue('content.fileName', url.split('/').pop() ?? 'document.pdf', { shouldDirty: true });
                 }}
               />
               <p className="text-sm text-gray-500">

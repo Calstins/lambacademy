@@ -1,10 +1,10 @@
-// lib/uploadthing.ts
-import type { UploadRouter } from '@/app/api/uploadthing/core';
-export type { UploadRouter };
+'use client';
 
-// ✅ use these directly
-export {
-  UploadButton,
-  UploadDropzone,
-  // useUploadThing,
-} from '@uploadthing/react';
+import { generateReactHelpers } from '@uploadthing/react';
+import type { OurFileRouter } from '@/app/api/uploadthing/core';
+
+// Generate type-safe helpers for working with UploadThing
+export const { useUploadThing, uploadFiles } =
+  generateReactHelpers<OurFileRouter>();
+
+export { UploadButton, UploadDropzone, Uploader } from '@uploadthing/react';

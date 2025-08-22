@@ -2,9 +2,6 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { Toaster } from 'sonner';
-import { NextSSRPlugin } from '@uploadthing/react/next-ssr-plugin';
-import { extractRouterConfig } from 'uploadthing/server';
-import { uploadRouter } from '@/app/api/uploadthing/core';
 // import '@uploadthing/react/styles.css';
 import './globals.css';
 
@@ -104,7 +101,6 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <NextSSRPlugin routerConfig={extractRouterConfig(uploadRouter)} />
         {children}
         <Toaster position="top-right" />
       </body>
