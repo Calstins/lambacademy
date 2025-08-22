@@ -110,11 +110,50 @@ export function UserManagement() {
     filterUsers();
   }, [users, roleFilter, searchTerm]);
 
+  function toUser(u: any): User {
+    return {
+      id: u.id,
+      email: u.email,
+      phone: u.phone ?? '',
+      role: u.role === 'ADMIN' ? 'ADMIN' : 'STUDENT',
+      gender: u.gender === 'FEMALE' ? 'FEMALE' : 'MALE',
+      department: u.department ?? undefined,
+      course: u.course ?? undefined,
+      country: u.country ?? undefined,
+      createdAt: (u.createdAt instanceof Date
+        ? u.createdAt
+        : new Date(u.createdAt)
+      ).toISOString(),
+      _count: { enrollments: u._count?.enrollments ?? 0 },
+    };
+  }
+
+  function toDetailedUser(u: any): User {
+    const base = toUser(u);
+    return {
+      ...base,
+      enrollments: Array.isArray(u.enrollments)
+        ? u.enrollments.map((e: any) => ({
+            course: { title: e?.course?.title ?? 'Untitled Course' },
+            progressPercent:
+              typeof e?.progressPercent === 'number' ? e.progressPercent : 0,
+            completedAt: e?.completedAt
+              ? (e.completedAt instanceof Date
+                  ? e.completedAt
+                  : new Date(e.completedAt)
+                ).toISOString()
+              : undefined,
+          }))
+        : undefined,
+    };
+  }
+
   const fetchUsers = async () => {
     try {
-      const data = await getUsers();
-      setUsers(data);
-    } catch (error) {
+      const data = await getUsers(); // whatever the server returns
+      const normalized: User[] = (data as any[]).map(toUser);
+      setUsers(normalized);
+    } catch {
       toast.error('Failed to fetch users');
     } finally {
       setIsLoading(false);
@@ -129,12 +168,12 @@ export function UserManagement() {
     }
 
     if (searchTerm) {
+      const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
         (user) =>
-          user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          user.phone.includes(searchTerm) ||
-          (user.department &&
-            user.department.toLowerCase().includes(searchTerm.toLowerCase()))
+          (user.email ?? '').toLowerCase().includes(term) ||
+          (user.phone ?? '').includes(searchTerm) ||
+          (user.department ?? '').toLowerCase().includes(term)
       );
     }
 
@@ -185,16 +224,16 @@ export function UserManagement() {
 
   const viewUserDetails = async (userId: string) => {
     try {
-      const user = await getUserDetails(userId);
-      if (user) {
-        setViewingUser(user);
+      const raw = await getUserDetails(userId);
+      if (raw) {
+        const normalized = toDetailedUser(raw);
+        setViewingUser(normalized);
         setViewDialogOpen(true);
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to fetch user details');
     }
   };
-
   const openEditDialog = (user: User) => {
     setEditingUser(user);
     reset({
