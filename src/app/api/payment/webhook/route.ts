@@ -29,9 +29,9 @@ export async function POST(request: NextRequest) {
       const { reference, status, metadata } = event.data;
 
       if (status === 'success') {
-        // Check if it's a section payment or course payment
+        // Check if it's a section payment or course/full access payment
         if (metadata?.sectionId) {
-          // Handle section payment
+          // Handle individual section payment
           const { sectionId, enrollmentId, courseId } = metadata;
 
           const enrollment = await prisma.enrollment.findUnique({
@@ -43,38 +43,60 @@ export async function POST(request: NextRequest) {
               where: { id: enrollmentId },
               data: {
                 paidSections: {
-                  push: sectionId, // MongoDB array push operation
+                  push: sectionId,
                 },
               },
             });
           }
         } else {
-          // Handle course payment - update enrollment with payment reference
+          // Handle course or full access payment
+          const { courseId, userId, includeAllSections, paidSectionIds } =
+            metadata;
+
+          const updateData: any = { paymentStatus: 'COMPLETED' };
+
+          // If this was a full access purchase, add all paid sections
+          if (
+            includeAllSections &&
+            paidSectionIds &&
+            Array.isArray(paidSectionIds)
+          ) {
+            updateData.paidSections = paidSectionIds;
+          }
+
           const updated = await prisma.enrollment.updateMany({
             where: {
               paymentReference: reference,
               paymentStatus: 'PENDING',
             },
-            data: { paymentStatus: 'COMPLETED' },
+            data: updateData,
           });
 
           // If no enrollment found with reference, try to find by metadata
-          if (updated.count === 0 && metadata?.userId && metadata?.courseId) {
+          if (updated.count === 0 && userId && courseId) {
             await prisma.enrollment.updateMany({
               where: {
-                userId: metadata.userId,
-                courseId: metadata.courseId,
+                userId: userId,
+                courseId: courseId,
                 paymentStatus: 'PENDING',
               },
               data: {
                 paymentStatus: 'COMPLETED',
                 paymentReference: reference,
+                ...(includeAllSections &&
+                  paidSectionIds &&
+                  Array.isArray(paidSectionIds) && {
+                    paidSections: paidSectionIds,
+                  }),
               },
             });
           }
         }
 
-        console.log(`Payment successful: ${reference}`);
+        console.log(`Payment successful: ${reference}`, {
+          includeAllSections: metadata?.includeAllSections,
+          paidSectionIds: metadata?.paidSectionIds,
+        });
       }
     }
 

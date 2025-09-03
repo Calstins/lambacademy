@@ -143,23 +143,41 @@ export function CourseGrid({ courses }: CourseGridProps) {
     startTransition(async () => {
       try {
         const totalPrice = calculateTotalPrice(selectedCourse);
+
+        console.log('Initiating purchase:', {
+          courseId: selectedCourse.id,
+          amount: totalPrice,
+          includeAllSections: true,
+        });
+
         const response = await fetch('/api/payment/initialize', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             courseId: selectedCourse.id,
             amount: totalPrice,
-            includeAllSections: true,
+            includeAllSections: true, // This will now be handled properly
           }),
         });
 
         if (response.ok) {
-          const { authorization_url } = await response.json();
-          window.location.href = authorization_url;
+          const result = await response.json();
+          console.log('Payment initialization successful:', result);
+
+          if (result.authorization_url) {
+            // Store course ID for callback page
+            localStorage.setItem('pendingCourseId', selectedCourse.id);
+            window.location.href = result.authorization_url;
+          } else {
+            toast.error('Invalid payment response');
+          }
         } else {
-          toast.error('Failed to initialize payment');
+          const errorData = await response.json();
+          console.error('API Error:', errorData);
+          toast.error(errorData.error || 'Failed to initialize payment');
         }
       } catch (error) {
+        console.error('Payment initialization failed:', error);
         toast.error('Payment initialization failed');
       }
     });
