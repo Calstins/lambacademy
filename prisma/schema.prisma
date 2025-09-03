@@ -42,6 +42,7 @@ model User {
   image         String?
   sessions      Session[]
   accounts      Account[]
+  Payments      Payment[]
 
   @@map("users")
 }
@@ -68,6 +69,7 @@ model Course {
   sections     Section[]
   enrollments  Enrollment[]
   certificates Certificate[]
+  Payments     Payment[]
 
   @@map("courses")
 }
@@ -222,6 +224,36 @@ model Certificate {
 
   @@unique([userId, courseId])
   @@map("certificates")
+}
+
+model Payment {
+  id               String        @id @default(auto()) @map("_id") @db.ObjectId
+  reference        String        @unique
+  userId           String
+  courseId         String?       @db.ObjectId
+  sectionId        String?       @db.ObjectId
+  enrollmentId     String?       @db.ObjectId
+  amount           Float // in naira (original amount)
+  amountPaid       Float? // actual amount paid (from Paystack)
+  currency         String        @default("NGN")
+  status           PaymentStatus @default(PENDING)
+  paymentMethod    String?
+  paymentType      PaymentType // COURSE or SECTION
+  paystackResponse Json? // Store full Paystack response
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  paidAt           DateTime?
+
+  // Relations
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  @@map("payments")
+}
+
+enum PaymentType {
+  COURSE
+  SECTION
 }
 
 enum Role {
